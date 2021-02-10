@@ -5,8 +5,10 @@ Usage:
 python extract.py /path/to/nxt_switchboard_ann/xml > output.csv
 ```
 
-Total markable NPs: 304307
+Descriptive stats with / without "you know":
 
-Total with animacy annotation: 303741
+Total markable NPs: 304307 / 295835
 
-Total with information structure annotation: 95232
+Total with animacy annotation: 303741 / 295286
+
+Total with information structure annotation: 95232 / 92253
