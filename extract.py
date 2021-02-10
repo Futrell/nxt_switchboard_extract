@@ -149,7 +149,7 @@ def extract_markable(identifier):
             return None
     return dict(filter(None, map(extract, tree.getroot())))
 
-def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_uh=True):
+def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_uh=True, exclude_youknow=True):
     markable = extract_markable(identifier)
     syntax = extract_syntax(identifier)
     terminals = extract_terminals(identifier)
@@ -190,7 +190,18 @@ def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_u
         tokens = list(traverse(s))
         nonpunct = [(id,attrib) for id, attrib in tokens if attrib['pos'] != 'PUNCT']
         if nonpunct:
-            yield tokens
+            if exclude_youknow:
+                yield filter_youknow(tokens)
+            else:
+                yield tokens
+
+def filter_youknow(tokens):
+    bad_indices = set()
+    for i in range(len(tokens) - 1):
+        if tokens[i][-1].get('orth').lower() == 'you' and tokens[i+1][-1].get('orth').lower() == 'know':
+            bad_indices.add(i)
+            bad_indices.add(i+1)
+    return [token for i, token in enumerate(tokens) if i not in bad_indices]
 
 def the_unique(xs):
     first, *rest = xs
@@ -208,16 +219,20 @@ def run():
         assert identifier == identifier2
         assert sA == 'A'
         assert sB == 'B'
+
+        A_tokens = extract_tokens_and_annotations(A)
+        B_tokens = extract_tokens_and_annotations(B)
         
         A_sentences = [
             ((the_unique(s_id for (s_id, _), _ in sentence), 'A'), sentence)
-            for sentence in extract_tokens_and_annotations(A)
+            for sentence in A_tokens if sentence
         ]
         B_sentences = [
             ((the_unique(s_id for (s_id, _), _ in sentence), 'B'), sentence)
-            for sentence in extract_tokens_and_annotations(B)
-        ]
+            for sentence in B_tokens if sentence
+        ]            
         sentences = sorted(A_sentences + B_sentences)
+        
         for (s_id, participant), tokens in sentences:
             for (sentence_id, token_id), ann in tokens:
                 assert s_id == sentence_id
