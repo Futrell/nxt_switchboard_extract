@@ -42,9 +42,6 @@ def extract_syntax(identifier):
     tree = ET.parse(SYNTAX_PATH % (XML_PATH, identifier))
     def traverse(node):
         id = node.attrib["{http://nite.sourceforge.net/}id"]
-        nodecat = node.attrib.get('cat')
-        if 'subcat' in node.attrib:
-            nodecat += '-' + node.attrib['subcat']
         children = []
         for child in node:
             if child.tag == '{http://nite.sourceforge.net/}child':
@@ -58,6 +55,9 @@ def extract_syntax(identifier):
                     children.append((cat, parse_id(child.attrib["{http://nite.sourceforge.net/}id"])))
                 yield from traverse(child)
         if node.tag == 'nt':
+            nodecat = node.attrib.get('cat')
+            if 'subcat' in node.attrib:
+                nodecat += '-' + node.attrib['subcat']
             yield parse_id(id), (nodecat, children)
     return dict(traverse(tree.getroot()))
 
@@ -111,25 +111,26 @@ def is_definite(syntax, terminals, phrase):
 
     # an NP counts as definite if any of the following hold:
     def conditions():
-        # condition 1: simple bare pronoun
-        yield cats == ('PRP',)
+        # condition 1: NP contains simple pronoun
+        yield 'PRP' in cats
 
-        # condition 2: ends in proper name
-        yield cats[-1] == 'NNP'
-        yield cats[-1] == 'NNPS'
+        # condition 2: NP contains proper name
+        yield 'NNP' in cats
+        yield 'NNPS' in cats
 
-        # condition 3: possessive pronoun is present somewhere
+        # condition 3: NP contains a possessive pronoun 
         yield 'PRP$' in cats # determiner is possessive pronoun
 
-        # condition 4: definite determiner is present somewhere
+        # condition 4: NP contains a definite determiner
         determiners = [terminals[id].get('orth') for id, cat in zip(ids, cats) if cat == 'DT']
         yield any(determiner.lower() in DEFINITE_DETERMINERS for determiner in determiners)
 
-        # condition 5: s-genitive, "our nation's capital"
-        NP_mods = [syntax[id][-1] for id, cat in zip(ids, cats) if cat == 'NP']
-        if NP_mods:
-            yield NP_mods[-1][0] == 'POS'
-        
+        # condition 5: first NP inside NP is an s-genitive, like "our nation's capital"
+        if cats[0] == 'NP':
+            _, np_children = syntax[ids[0]]
+            *_, (last_child_type, last_child) = np_children
+            yield last_child_type == 't' and terminals.get(last_child, {}).get('pos') == 'POS'
+
     return any(conditions())
 
 def extract_markable(identifier):
@@ -141,9 +142,12 @@ def extract_markable(identifier):
     def extract(markable):
         d = markable.attrib
         del d['{http://nite.sourceforge.net/}id']
-        child_id = extract_id(rfutils.the_only(markable).attrib['href'])
-        return child_id, d
-    return dict(map(extract, tree.getroot()))
+        if d:
+            child_id = extract_id(rfutils.the_only(markable).attrib['href'])
+            return child_id, d
+        else:
+            return None
+    return dict(filter(None, map(extract, tree.getroot())))
 
 def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_uh=True):
     markable = extract_markable(identifier)
@@ -154,14 +158,15 @@ def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_u
 
     markable_terminals = markable.copy()
     for node, marks in markable.items():
-        if node in syntax: # need to identify heads here...complicated logic
+        if node in syntax: # need to identify heads here...?
             cat, children = syntax[node]
             marks['cat'] = cat            
             labelled_children = [
                 (terminals.get(child, {}).get('pos'), child) if type == 't' else (type, child)
-                for type, child in syntax[node][-1]
+                for type, child in syntax[node][-1] 
             ]
-            marks['definiteness'] = 'definite' if is_definite(syntax, terminals, labelled_children) else 'indefinite'
+            if labelled_children:
+                marks['definiteness'] = 'definite' if is_definite(syntax, terminals, labelled_children) else 'indefinite'
             markable_terminals.update({child:marks for _, child in children})
 
     seen = set()
