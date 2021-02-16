@@ -38,7 +38,7 @@ def depth_first_map(f, root):
     return traverse(root)
 
 def extract_syntax(identifier):
-    """ Create map from NT id's to immediate terminal children """
+    """ Create map from NT id's to (nt label, immediate terminal children) """
     tree = ET.parse(SYNTAX_PATH % (XML_PATH, identifier))
     def traverse(node):
         id = node.attrib["{http://nite.sourceforge.net/}id"]
@@ -106,6 +106,10 @@ def extract_terminals(identifier):
 def parse_id(s):
     return tuple(map(int, s.strip("'").lstrip('s').split('_')))
 
+def unparse_id(id):
+    one, two = id
+    return "s%s_%s" % (str(one), str(two))
+
 def is_definite(syntax, terminals, phrase):
     cats, ids = zip(*phrase)
 
@@ -160,6 +164,7 @@ def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_u
     for node, marks in markable.items():
         if node in syntax: # need to identify heads here...?
             cat, children = syntax[node]
+            marks['nt_id'] = unparse_id(node)
             marks['cat'] = cat            
             labelled_children = [
                 (terminals.get(child, {}).get('pos'), child) if type == 't' else (type, child)
@@ -252,7 +257,7 @@ def main(xml_path=None):
     lines = run()
     writer = csv.DictWriter(
         sys.stdout,
-        "dialogue sentence_id speaker token_id orth pos definiteness animacy animconf anthro status statustype cat edin-note stan-note".split(),
+        "dialogue sentence_id speaker token_id orth pos definiteness animacy animconf anthro status statustype cat nt_id edin-note stan-note".split(),
     )
     writer.writeheader()
     writer.writerows(lines)
