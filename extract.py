@@ -31,6 +31,8 @@ DEFINITE_DETERMINERS = {
     'their',
 }
 
+NP_HEAD_POS = {'NN', 'NNS', 'NNP', 'NNPS', 'PRP', 'PRP$', 'WP', 'WP$'}
+
 def depth_first_map(f, root):
     def traverse(node):
         yield f(node)
@@ -110,6 +112,15 @@ def unparse_id(id):
     one, two = id
     return "s%s_%s" % (str(one), str(two))
 
+def last(xs):
+    x = None
+    for x in xs:
+        pass
+    return x
+
+def identify_head(syntax, phrase):
+    return last(sorted(id for cat, id in phrase if cat in NP_HEAD_POS))
+
 def is_definite(syntax, terminals, phrase):
     cats, ids = zip(*phrase)
 
@@ -155,7 +166,7 @@ def extract_markable(identifier):
 
 def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_uh=True, exclude_youknow=True):
     markable = extract_markable(identifier)
-    syntax = extract_syntax(identifier)
+    syntax = extract_syntax(identifier) # dictionary node -> [type, childreen]
     terminals = extract_terminals(identifier)
     if exclude_reparanda:
         reparanda = extract_reparanda(identifier)
@@ -166,13 +177,16 @@ def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_u
             cat, children = syntax[node]
             marks['nt_id'] = unparse_id(node)
             marks['cat'] = cat            
-            labelled_children = [
+            labelled_children = [ # list of Maybe pos x id
                 (terminals.get(child, {}).get('pos'), child) if type == 't' else (type, child)
-                for type, child in syntax[node][-1] 
+                for type, child in syntax[node][-1]
             ]
             if labelled_children:
                 marks['definiteness'] = 'definite' if is_definite(syntax, terminals, labelled_children) else 'indefinite'
-            markable_terminals.update({child:marks for _, child in children})
+            markable_terminals.update({child:marks.copy() for _, child in children})
+            the_head = identify_head(syntax, labelled_children)
+            for label, child in labelled_children:
+                markable_terminals[child]['head'] = child == the_head
 
     seen = set()
     def traverse(nt):
@@ -257,7 +271,7 @@ def main(xml_path=None):
     lines = run()
     writer = csv.DictWriter(
         sys.stdout,
-        "dialogue sentence_id speaker token_id orth pos definiteness animacy animconf anthro status statustype cat nt_id edin-note stan-note".split(),
+        "dialogue sentence_id speaker token_id orth pos head definiteness animacy animconf anthro status statustype cat nt_id edin-note stan-note".split(),
     )
     writer.writeheader()
     writer.writerows(lines)
