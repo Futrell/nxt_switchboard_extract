@@ -31,7 +31,7 @@ DEFINITE_DETERMINERS = {
     'their',
 }
 
-NP_HEAD_POS = {'NN', 'NNS', 'NNP', 'NNPS', 'PRP', 'PRP$', 'WP', 'WP$'}
+NP_HEAD_POS = {'NN', 'NNS', 'NNP', 'NNPS', 'PRP', 'PRP$', 'WP', 'WP$', 'DT', 'WDT'}
 
 def depth_first_map(f, root):
     def traverse(node):
