@@ -33,6 +33,8 @@ DEFINITE_DETERMINERS = {
 
 NP_HEAD_POS = {'NN', 'NNS', 'NNP', 'NNPS', 'PRP', 'PRP$', 'WP', 'WP$', 'DT', 'WDT'}
 
+BAD_TOKENS = "MUMBLEx"
+
 def depth_first_map(f, root):
     def traverse(node):
         yield f(node)
@@ -198,7 +200,7 @@ def extract_tokens_and_annotations(identifier, exclude_reparanda=True, exclude_u
                 if type == 't':
                     if not (exclude_reparanda and child in reparanda):
                         attribs = terminals.get(child, {})
-                        if attribs and not (exclude_uh and attribs.get('pos') == 'UH'):
+                        if attribs and not (exclude_uh and (attribs.get('pos') == 'UH' or attribs.get('orth') == "MUMBLEx")):
                             if child in markable_terminals:
                                 attribs.update(markable_terminals[child])
                             yield (child, attribs)
