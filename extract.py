@@ -268,8 +268,12 @@ def run():
 
 def main(xml_path=None):
     if xml_path:
-        global XML_PATH
+        global XML_PATH, SYNTAX_PATH, MARKABLE_PATH, TERMINALS_PATH, REPAIRS_PATH
         XML_PATH = xml_path
+        SYNTAX_PATH = "%s/syntax/%s.syntax.xml"
+        MARKABLE_PATH = "%s/markable/%s.markable.xml"
+        TERMINALS_PATH = "%s/terminals/%s.terminals.xml"
+        REPAIRS_PATH = "%s/disfluency/%s.disfluency.xml"        
     lines = run()
     writer = csv.DictWriter(
         sys.stdout,
